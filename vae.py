@@ -28,27 +28,35 @@ def load_dataset(img_path: str, img_size: int = 128) -> ImageFolder:
     return torchvision.datasets.ImageFolder(img_path, transform=transform)
 
 
-def load_images(img_path: str, trace=False):
-    img_ext = ['.png', '.jpg', '.bmp']
-    res = []
-    for roots, dirs, files in os.walk(img_path):
-        if len(files) > 0:
-            res += [numpy.array(Image.open(os.path.join(roots, f)))[:, :, :3] / 255
-                    for f in files if os.path.splitext(f)[1] in img_ext]
-    if trace:
-        rows = int(math.sqrt(len(res)))
-        cols = int(len(res) / rows)
+def load_images(source: (str, ImageFolder), trace=False):
+    def draw_images(ims):
+        rows = int(math.sqrt(len(ims)))
+        cols = int(len(ims) / rows)
         totals = []
         for j in range(rows):
             row = []
             for i in range(cols):
-                row += [res[j * cols + i]]
+                row += [ims[j * cols + i]]
             totals.append(numpy.concatenate(row, axis=1))
         totals = numpy.concatenate(totals)
         matplotlib.pyplot.figure(figsize=(10, 10))
         matplotlib.pyplot.axis('off')
         matplotlib.pyplot.imshow(totals)
         matplotlib.pyplot.show()
+
+    img_ext = ['.png', '.jpg', '.bmp']
+    res = []
+    if isinstance(source, ImageFolder):
+        res = [numpy.array(Image.open(im_path))[:, :, :3] / 255 for im_path, _ in source.imgs]
+    elif isinstance(source, str) and os.path.exists(source):
+        for roots, dirs, files in os.walk(source):
+            if len(files) > 0:
+                res += [numpy.array(Image.open(os.path.join(roots, f)))[:, :, :3] / 255
+                        for f in files if os.path.splitext(f)[1] in img_ext]
+    else:
+        raise ValueError(f"Unreadable Source = {source}")
+    if trace:
+        draw_images(res)
     return res
 
 
@@ -189,16 +197,7 @@ def translate(inputs: list):
     return [im.transpose(0, 2, 3, 1).squeeze(axis=0) for im in inputs]
 
 
-def verify(preds, targets):
-    preds = numpy.concatenate(preds, axis=1)
-    targets = numpy.concatenate(targets, axis=1)
-    fair = numpy.concatenate((preds, targets), axis=0)
-    matplotlib.pyplot.imshow(fair)
-    matplotlib.pyplot.axis('off')
-    matplotlib.pyplot.show()
-
-
-def parse_opt():
+def _parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_folder', type=str, required=True,
                         help='path to your folder of images for learning the discrete VAE and its codebook')
@@ -218,16 +217,35 @@ def parse_opt():
     return vars(args)
 
 
+def _trace(code: list):
+    code = numpy.concatenate(code, axis=0)
+    sample_len, code_len = code.shape
+    print(f'ALL {opt["image_size"]} size images are compress by {code_len} codes')
+    return sample_len, code_len
+
+
+def _random_verify(preds: list, targets: list, num_samples: int, num_random=10, fig_size=(10, 10)):
+    indexes = numpy.random.choice(num_samples, size=num_random)
+    preds, targets = numpy.array(preds), numpy.array(targets)
+    preds, targets = numpy.concatenate(preds[indexes, ...], axis=1), numpy.concatenate(targets[indexes, ...], axis=1)
+    fair = numpy.concatenate((preds, targets), axis=0)
+    matplotlib.pyplot.figure(figsize=fig_size)
+    matplotlib.pyplot.imshow(fair)
+    matplotlib.pyplot.axis('off')
+    matplotlib.pyplot.show()
+
+
 if __name__ == "__main__":
-    opt = parse_opt()
+    opt = _parse_opt()
     model_pth = './model/vae_best.pth'
     if not os.path.exists(model_pth):
         train_set = load_dataset(img_path=opt['train_folder'], img_size=opt['image_size'])
-        logs = train(epoch=100, train_data=train_set, model_path=model_pth, learning_rate=0.001, **opt)
+        logs = train(epoch=500, train_data=train_set, model_path=model_pth, learning_rate=0.001, **opt)
         matplotlib.pyplot.plot(logs)
         matplotlib.pyplot.show()
     test_set = load_dataset(img_path=opt['test_folder'], img_size=opt['image_size'])
-    test_images = load_images(img_path=opt['test_folder'])
-    _, decodes = test(model_path=model_pth, test_data=test_set, **opt)
+    test_images = load_images(source=test_set)
+    codes, decodes = test(model_path=model_pth, test_data=test_set, **opt)
     pred_images = translate(decodes)
-    verify(pred_images, test_images)
+    len_sample, _ = _trace(codes)
+    _random_verify(pred_images, test_images, len_sample)
