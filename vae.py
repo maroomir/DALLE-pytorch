@@ -1,19 +1,24 @@
 import argparse
 import math
 import os.path
+import os
+
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 import numpy
 import torch
 import torchvision.transforms
+import matplotlib.pyplot
 
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset, DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import Lambda, Resize, CenterCrop, ToTensor
 from tqdm import tqdm
 from dalle_pytorch import DiscreteVAE
+from PIL import Image
 
 
-def load_images(img_path: str, img_size: int = 128) -> ImageFolder:
+def load_dataset(img_path: str, img_size: int = 128) -> ImageFolder:
     transform = torchvision.transforms.Compose([
         Lambda(lambda img: img.convert('RGB') if img.mode != 'RGB' else img),
         Resize(img_size),
@@ -23,16 +28,40 @@ def load_images(img_path: str, img_size: int = 128) -> ImageFolder:
     return torchvision.datasets.ImageFolder(img_path, transform=transform)
 
 
+def load_images(img_path: str, trace=False):
+    img_ext = ['.png', '.jpg', '.bmp']
+    res = []
+    for roots, dirs, files in os.walk(img_path):
+        if len(files) > 0:
+            res += [numpy.array(Image.open(os.path.join(roots, f)))[:, :, :3] / 255
+                    for f in files if os.path.splitext(f)[1] in img_ext]
+    if trace:
+        rows = int(math.sqrt(len(res)))
+        cols = int(len(res) / rows)
+        totals = []
+        for j in range(rows):
+            row = []
+            for i in range(cols):
+                row += [res[j * cols + i]]
+            totals.append(numpy.concatenate(row, axis=1))
+        totals = numpy.concatenate(totals)
+        matplotlib.pyplot.figure(figsize=(10, 10))
+        matplotlib.pyplot.axis('off')
+        matplotlib.pyplot.imshow(totals)
+        matplotlib.pyplot.show()
+    return res
+
+
 def _fit(model: DiscreteVAE, data_loader: DataLoader, optimizer, trace=True):
     if torch.cuda.is_available():
         device = torch.device('cuda')
     else:
         device = torch.device('cpu')
-    model.train()
     bar = tqdm(enumerate(data_loader))
     losses = []
     for i, (_input, _) in bar:
         _input = _input.type(torch.FloatTensor).to(device)
+        model.train()
         optimizer.zero_grad()
         loss = model(_input, return_loss=True)
         loss.backward()
@@ -45,7 +74,7 @@ def _fit(model: DiscreteVAE, data_loader: DataLoader, optimizer, trace=True):
 
 def train(epoch: int,
           model_path: str,
-          train_data: ImageFolder,
+          train_data: Dataset,
           batch_size=4,
           num_workers=0,  # 0: CPU / 4: GPU
           learning_rate=1e-3,
@@ -87,6 +116,9 @@ def train(epoch: int,
             return 0
 
     def save_model(_i, _path: str):
+        root_path = os.path.dirname(_path)
+        if not os.path.exists(root_path):
+            os.makedirs(root_path)
         torch.save({'epoch': _i,
                     'model': model.state_dict(),
                     'optimizer': optimizer.state_dict()}, _path)
@@ -114,7 +146,7 @@ def train(epoch: int,
 
 
 def test(model_path: str,
-         test_data: ImageFolder,
+         test_data: Dataset,
          num_worker=0,  # 0: CPU / 4: GPU
          **kwargs):
     # Check if we can use a GPU device
@@ -142,18 +174,36 @@ def test(model_path: str,
     # Start the test sequence
     bar = tqdm(test_loader)
     print("Length of data = ", len(bar))
-    outputs = []
-    for i, _input in enumerate(bar):
+    codes, outputs = [], []
+    for _input, _ in bar:
         _input = _input.type(torch.FloatTensor).to(device)
-        output = model(_input)
-        outputs.append(output.detach().cpu().numpy())
-    return outputs
+        with torch.no_grad():
+            code = model.get_codebook_indices(_input)
+            output = model.decode(code)
+            codes.append(code.detach().cpu().numpy())
+            outputs.append(output.detach().cpu().numpy())
+    return codes, outputs
+
+
+def translate(inputs: list):
+    return [im.transpose(0, 2, 3, 1).squeeze(axis=0) for im in inputs]
+
+
+def verify(preds, targets):
+    preds = numpy.concatenate(preds, axis=1)
+    targets = numpy.concatenate(targets, axis=1)
+    fair = numpy.concatenate((preds, targets), axis=0)
+    matplotlib.pyplot.imshow(fair)
+    matplotlib.pyplot.axis('off')
+    matplotlib.pyplot.show()
 
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--image_folder', type=str, required=True,
+    parser.add_argument('--train_folder', type=str, required=True,
                         help='path to your folder of images for learning the discrete VAE and its codebook')
+    parser.add_argument('--test_folder', type=str, required=True,
+                        help='path to your folder of images for testing the discrete VAE and its codebook')
     parser.add_argument('--image_size', type=int, required=False, default=128,
                         help='image size')
     model_group = parser.add_argument_group('Model settings')
@@ -170,5 +220,14 @@ def parse_opt():
 
 if __name__ == "__main__":
     opt = parse_opt()
-    dataset = load_images(img_path=opt['image_folder'], img_size=opt['image_size'])
-    train(epoch=500, model_path='/model/vae_best.pth', **opt)
+    model_pth = './model/vae_best.pth'
+    if not os.path.exists(model_pth):
+        train_set = load_dataset(img_path=opt['train_folder'], img_size=opt['image_size'])
+        logs = train(epoch=100, train_data=train_set, model_path=model_pth, learning_rate=0.001, **opt)
+        matplotlib.pyplot.plot(logs)
+        matplotlib.pyplot.show()
+    test_set = load_dataset(img_path=opt['test_folder'], img_size=opt['image_size'])
+    test_images = load_images(img_path=opt['test_folder'])
+    _, decodes = test(model_path=model_pth, test_data=test_set, **opt)
+    pred_images = translate(decodes)
+    verify(pred_images, test_images)
