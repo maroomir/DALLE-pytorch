@@ -199,12 +199,11 @@ def translate(inputs: list):
 
 def _parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_folder', type=str, required=True,
+    parser.add_argument('--train_folder', type=str, default='./data/train',
                         help='path to your folder of images for learning the discrete VAE and its codebook')
-    parser.add_argument('--test_folder', type=str, required=True,
+    parser.add_argument('--test_folder', type=str, default='./data/test',
                         help='path to your folder of images for testing the discrete VAE and its codebook')
-    parser.add_argument('--image_size', type=int, required=False, default=128,
-                        help='image size')
+    parser.add_argument('--image_size', type=int, default=128, help='image size')
     model_group = parser.add_argument_group('Model settings')
     model_group.add_argument('--num_tokens', type=int, default=8192, help='number of image tokens')
     model_group.add_argument('--num_layers', type=int, default=3, help='number of layers (should be 3 or above)')

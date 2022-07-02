@@ -4,7 +4,7 @@ from torch import nn, einsum
 import torch.nn.functional as F
 import numpy as np
 
-from axial_positional_embedding import AxialPositionalEmbedding
+from dalle_pytorch.axial_positional_embedding import AxialPositionalEmbedding
 from einops import rearrange
 
 from dalle_pytorch import distributed_utils

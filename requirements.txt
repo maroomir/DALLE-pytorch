@@ -1,0 +1,12 @@
+torch
+torchvision
+pytorch-lightning
+matplotlib
+pillow<=8.4.0
+ftfy
+einops
+regex
+tokenizers
+transformers
+tqdm
+omegaconf

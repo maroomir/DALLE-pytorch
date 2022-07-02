@@ -11,7 +11,7 @@ from pathlib import Path
 from tqdm import tqdm
 from math import sqrt, log
 from omegaconf import OmegaConf
-from taming.models.vqgan import VQModel, GumbelVQ
+from dalle_pytorch.taming.models.vqgan import VQModel, GumbelVQ
 import importlib
 
 import torch

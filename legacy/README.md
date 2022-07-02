@@ -41,12 +41,12 @@ This library could not have been possible without the contributions of <a href="
 
 - <a href="https://github.com/robvanvolt">TheodoreGalanos</a> has trained on 150k layouts with the following results
 <p>
-  <img src="./images/layouts-1.jpg" width="256"></img>
-  <img src="./images/layouts-2.jpg" width="256"></img>
+  <img src="../images/layouts-1.jpg" width="256"></img>
+  <img src="../images/layouts-2.jpg" width="256"></img>
 </p>
 - <a href="https://github.com/rom1504">Rom1504</a> has trained on 50k fashion images with captions with a really small DALL-E (2 layers) for just 24 hours with the following results
 <p/>
-<img src="./images/clothing.png" width="420"></img>
+<img src="../images/clothing.png" width="420"></img>
 
 - <a href="https://github.com/afiaka87">afiaka87</a> trained for 6 epochs on the same dataset as before thanks to the efficient 16k VQGAN with the following <a href="https://github.com/lucidrains/DALLE-pytorch/discussions/322>discussion">results</a>
 

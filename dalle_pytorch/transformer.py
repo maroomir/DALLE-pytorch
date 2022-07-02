@@ -11,7 +11,7 @@ from einops import rearrange
 from dalle_pytorch.reversible import ReversibleSequence, SequentialSequence
 from dalle_pytorch.attention import Attention, SparseAttention, SparseConvCausalAttention, SparseAxialCausalAttention
 
-from rotary_embedding_torch import RotaryEmbedding, broadcat
+from dalle_pytorch.rotary_embedding_torch import RotaryEmbedding, broadcat
 
 # helpers
 
