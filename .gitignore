@@ -1,7 +1,6 @@
 # dall-e generation outputs
 outputs/
 *.pt
-taming/
 wandb/
 dalle-ds-cp/
 
