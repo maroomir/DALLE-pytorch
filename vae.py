@@ -149,7 +149,8 @@ def train(epoch: int,
             min_loss = loss
             save_model(i, model_path)
         elif i % 100 == 0:
-            save_model(i, f'vae_{i}epoch.pth')
+            _path = os.path.join(os.path.dirname(model_path), f'vae_{i}epoch.pth')
+            save_model(i, _path)
     return history
 
 
