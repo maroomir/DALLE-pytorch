@@ -193,7 +193,7 @@ if __name__ == "__main__":
         matplotlib.pyplot.show()
     test_set = load_dataset(img_path=test_path, img_size=opt['image_size'])
     test_images = load_images(source=test_set)
-    codes, decodes = test(model_path=model_pth, test_data=test_set, **opt)
+    codes, decodes = test(model_path=model_pth, test_data=test_set)
     pred_images = translate(decodes)
     len_sample, _ = _trace(codes)
     _random_verify(pred_images, test_images, len_sample)
