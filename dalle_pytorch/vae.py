@@ -11,7 +11,7 @@ from pathlib import Path
 from tqdm import tqdm
 from math import sqrt, log
 from omegaconf import OmegaConf
-from dalle_pytorch.taming.models.vqgan import VQModel, GumbelVQ
+from .taming.models.vqgan import VQModel, GumbelVQ
 import importlib
 
 import torch
@@ -20,7 +20,7 @@ import torch.nn.functional as F
 
 from einops import rearrange
 
-from dalle_pytorch import distributed_utils
+from . import distributed_utils
 
 # constants
 

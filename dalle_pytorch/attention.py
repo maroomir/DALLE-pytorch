@@ -6,7 +6,7 @@ from torch import nn, einsum
 import torch.nn.functional as F
 from einops import rearrange, repeat
 
-from dalle_pytorch.rotary_embedding_torch import apply_rotary_emb
+from .rotary_embedding_torch import apply_rotary_emb
 
 # helpers
 

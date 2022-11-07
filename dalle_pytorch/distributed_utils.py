@@ -11,7 +11,7 @@ You can check whether a backend is in use with the `using_backend`
 function.
 """
 
-from dalle_pytorch.distributed_backends import \
+from .distributed_backends import \
     DeepSpeedBackend, \
     DummyBackend, \
     HorovodBackend
